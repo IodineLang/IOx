@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{10F12D2B-95EB-4A81-9973-084853C1BA46}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>iox</RootNamespace>
+    <AssemblyName>iox</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ExternalConsole>true</ExternalConsole>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <Optimize>true</Optimize>
+    <OutputPath>..</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ExternalConsole>true</ExternalConsole>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="LibIodine">
+      <HintPath>..\iodine\bin\LibIodine.dll</HintPath>
+    </Reference>
+    <Reference Include="codeaddicts.libArgument">
+      <HintPath>..\packages\Codeaddicts.libArgument.1.0.6001.31903\lib\codeaddicts.libArgument.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Shell.cs" />
+    <Compile Include="Prompt.cs" />
+    <Compile Include="ConsoleHelper.cs" />
+    <Compile Include="Powerline.cs" />
+    <Compile Include="ANSI.cs" />
+    <Compile Include="PrettyPrint.cs" />
+    <Compile Include="ANSIColor.cs" />
+    <Compile Include="ReflectionHelper.cs" />
+    <Compile Include="IodineExtensions\IoxExtension.cs" />
+    <Compile Include="Configuration.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\libiox\libiox.csproj">
+      <Project>{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}</Project>
+      <Name>libiox</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="IodineExtensions\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+</Project>
