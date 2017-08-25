@@ -105,12 +105,18 @@
 
 		string ReadUserInput () {
 
+			// TODO: Track grouping operators separately
+
 			// Declare variables
 			var accum = new StringBuilder ();
 			string lastLine = string.Empty;
 			bool editingFinished = false;
 			bool correctIndent = false;
+			bool correctIndentExtra = false; // special unindent for matched grouping
 			int foldCount = 0;
+			int foldBracketDiff = 0;
+			int foldBraceDiff = 0;
+			int foldParenDiff = 0;
 			int line = 1;
 			int indent = 0;
 
@@ -124,8 +130,25 @@
 				try {
 					tokens = lexer.Scan ();
 				} catch {
+					foldBracketDiff = 0;
+					foldParenDiff = 0;
+					foldBraceDiff = 0;
 					return 0;
 				}
+				foldBracketDiff = (
+					tokens.Count (t => t.Class == global::Iodine.Compiler.TokenClass.OpenBracket) -
+					tokens.Count (t => t.Class == global::Iodine.Compiler.TokenClass.CloseBracket)
+				);
+				foldBraceDiff = (
+					tokens.Count (t => t.Class == global::Iodine.Compiler.TokenClass.OpenBrace) -
+					tokens.Count (t => t.Class == global::Iodine.Compiler.TokenClass.CloseBrace)
+				);
+				foldParenDiff = (
+					tokens.Count (t => t.Class == global::Iodine.Compiler.TokenClass.OpenParan) -
+					tokens.Count (t => t.Class == global::Iodine.Compiler.TokenClass.CloseParan)
+				);
+				return foldBracketDiff + foldBraceDiff + foldParenDiff;
+				/*
 				return (
 					tokens.Count (t => new [] {
 						global::Iodine.Compiler.TokenClass.OpenBrace,
@@ -138,6 +161,7 @@
 						global::Iodine.Compiler.TokenClass.CloseParan,
 					}.Contains (t.Class))
 				);
+				*/
 			});
 
 			// Define getPrompt function
@@ -168,7 +192,7 @@
 				Prompt.Push (getPrompt (Math.Max (0, line - 1)));
 				ANSI.Write (Prompt.ToString ());
 				Prompt.Pop ();
-				Console.Write (string.Empty.PadLeft (indent * 2));
+				Console.Write (string.Empty.PadLeft ((correctIndentExtra ? Math.Max (0, indent - 1) : indent) * 2));
 				Console.Write (lastLine);
 
 				// Restore cursor state
@@ -198,6 +222,7 @@
 
 					// Do not correct the indentation again
 					correctIndent = false;
+					correctIndentExtra = false;
 				}
 
 				// Test if the prompt of the previous line should be rewritten
@@ -235,12 +260,27 @@
 				// Update state
 				var localFoldCount = getFoldCount (lastLine);
 				foldCount += localFoldCount;
+
+				// Auto-indent based on local fold count
 				if (localFoldCount > 0) {
 					indent += 1;
 				} else if (localFoldCount < 0) {
 					correctIndent = true;
 					indent = Math.Max (0, indent - 1);
 				}
+
+				// Auto-indent based on total fold count
+				if (foldCount == 0) {
+					indent = 0;
+				}
+
+				// Auto-indent based on matched close-open grouping operators
+				if (lastLine.Count (c => new [] { '{', '}', '[', ']', '(', ')' }.Contains (c)) >= 2
+						&& lastLine.IndexOfAny (new [] { '}', ']', ')' }) < lastLine.IndexOfAny (new [] { '{', '[', '(' })) {
+					correctIndentExtra = true;
+					correctIndent = true;
+				}
+
 				editingFinished = foldCount == 0;
 				line += 1;
 
@@ -254,7 +294,7 @@
 					ANSI.WriteLine ($"{Red}Mismatched bracket, brace, or parenthesis group!");
 					editingFinished = true;
 				} else {
-					
+
 					// Append line to buffer
 					accum.AppendLine (lastLine);
 				}
