@@ -42,6 +42,13 @@
 		}
 
 		/// <summary>
+		/// Duplicate the current prompt.
+		/// </summary>
+		public void Dup () {
+			Stack.Push (CurrentPrompt);
+		}
+
+		/// <summary>
 		/// Push the specified prompt.
 		/// </summary>
 		/// <param name="prompt">Prompt.</param>

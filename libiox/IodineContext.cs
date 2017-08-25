@@ -1,5 +1,4 @@
 ﻿namespace libiox {
-	using Iodine.Compiler;
 	using Iodine.Interop;
 	using Iodine.Runtime;
 
@@ -55,7 +54,7 @@
 		public IodineModule CompileSource (string source) {
 
 			// Create a source unit from the source string
-			var unit = SourceUnit.CreateFromSource (source);
+			var unit = Iodine.Compiler.SourceUnit.CreateFromSource (source);
 
 			// Compile the source unit
 			return unit.Compile (Context);

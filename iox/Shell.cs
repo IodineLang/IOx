@@ -1,5 +1,8 @@
 ﻿namespace iox {
 	using System;
+	using System.Collections.Generic;
+	using System.Linq;
+	using System.Text;
 	using Iodine.Runtime;
 	using libiox;
 	using static ANSIColor;
@@ -23,6 +26,11 @@
 		readonly Configuration Conf;
 
 		/// <summary>
+		/// The assembly version.
+		/// </summary>
+		readonly Version AssemblyVersion;
+
+		/// <summary>
 		/// The last buffered user input.
 		/// </summary>
 		string BufferedInput;
@@ -33,16 +41,18 @@
 		public Shell (Configuration conf) {
 			Conf = conf;
 
+			// Get assembly version
+			AssemblyVersion = ReflectionHelper.GetVersion ();
+
 			// Setup Iodine context
 			Iodine = new IodineContext ();
 			Iodine.AddSearchPaths ("./iodine/modules");
 			Iodine.RegisterExtension<IoxExtension> ("iox");
 
 			// Set prompt
-			Prompt = new Prompt ($"λ");
+			Prompt = new Prompt ("λ");
 			if (Conf.UsePowerlines) {
-				var version = ReflectionHelper.GetVersion ().ToString (2);
-				Prompt = new Prompt (Powerline ().Segment ($"IoX {version} ", fg: DarkCyan, bg: White).ToAnsiString ());
+				Prompt = new Prompt (Powerline ().Segment ($"IoX {AssemblyVersion.ToString (2)} ", fg: DarkCyan, bg: White).ToAnsiString ());
 			}
 		}
 
@@ -52,7 +62,7 @@
 		public void Run () {
 			
 			// Collect version information
-			var ioxVersion = ReflectionHelper.GetVersion ().ToString (2);
+			var ioxVersion = AssemblyVersion.ToString (2);
 			var iodineVersion = ReflectionHelper.GetIodineVersion ().ToString (3);
 			var iodineBuildDate = ReflectionHelper.GetIodineBuildDate ()?.ToString ("MMM dd yyyy") ?? string.Empty;
 
@@ -77,11 +87,8 @@
 		/// </summary>
 		void RunIteration () {
 
-			// Display the prompt
-			ANSI.Write (Prompt.ToString ());
-
-			// Read a line
-			BufferedInput = Console.ReadLine ().Trim ();
+			// Read user input
+			BufferedInput = ReadUserInput ();
 			if (string.IsNullOrEmpty (BufferedInput)) return;
 
 			// Compile the module
@@ -94,6 +101,124 @@
 
 			// Pretty print the result
 			PrettyPrint.WriteLine (result);
+		}
+
+		string ReadUserInput () {
+
+			// Declare variables
+			var accum = new StringBuilder ();
+			string lastLine = string.Empty;
+			bool editingFinished = false;
+			int foldCount = 0;
+			int line = 1;
+
+			// Define getFoldCount function
+			var getFoldCount = new Func<string, int> (str => {
+				var lexer = new Iodine.Compiler.Tokenizer (
+					new Iodine.Compiler.ErrorSink (),
+					new Iodine.Compiler.SourceReader (str, "__anonymous__")
+				);
+				IEnumerable<Iodine.Compiler.Token> tokens;
+				try {
+					tokens = lexer.Scan ();
+				} catch {
+					return 0;
+				}
+				return (
+					tokens.Count (t => new [] {
+						global::Iodine.Compiler.TokenClass.OpenBrace,
+						global::Iodine.Compiler.TokenClass.OpenBracket,
+						global::Iodine.Compiler.TokenClass.OpenParan,
+					}.Contains (t.Class)) -
+					tokens.Count (t => new [] {
+						global::Iodine.Compiler.TokenClass.CloseBrace,
+						global::Iodine.Compiler.TokenClass.CloseBracket,
+						global::Iodine.Compiler.TokenClass.CloseParan,
+					}.Contains (t.Class))
+				);
+			});
+
+			// Define getPrompt function
+			var getPrompt = new Func<int, string> (lineNum => {
+				if (Conf.UsePowerlines) {
+					var powerline = Powerline ()
+						.Segment ($"IoX {AssemblyVersion.ToString (2)} ", fg: DarkCyan, bg: White)
+						.Segment ($"{lineNum}", fg: White, bg: DarkCyan)
+						.ToAnsiString ();
+					return powerline;
+				}
+				return $"{lineNum} λ";
+			});
+
+			// Read more lines
+			while (!editingFinished) {
+				
+				// Test if this is the first line
+				if (line == 1) {
+
+					// Duplicate prompt
+					Prompt.Dup ();
+				} else {
+					
+					// Push new prompt to visually indicate multi-line editing
+					Prompt.Push (getPrompt (line));
+				}
+
+				// Test if this is the second line
+				if (line == 2) {
+					
+					// Save cursor state
+					var currentCursorTop = Console.CursorTop;
+					var targetCursorTop = Math.Max (0, Console.CursorTop - 1);
+
+					// Rewrite last line
+					Console.CursorTop = targetCursorTop;
+					Console.CursorLeft = 0;
+					Console.Write ("".PadRight (Console.WindowWidth));
+					Console.CursorTop = targetCursorTop;
+					Console.CursorLeft = 0;
+					Prompt.Push (getPrompt (1));
+					ANSI.Write (Prompt.ToString ());
+					Prompt.Pop ();
+					Console.Write (lastLine);
+
+					// Restore cursor state
+					Console.CursorTop = currentCursorTop;
+					Console.CursorLeft = 0;
+				}
+
+				// Write prompt
+				ANSI.Write (Prompt.ToString ());
+
+				// Read line
+				lastLine = Console.ReadLine ().Trim ();
+
+				// Update state
+				foldCount += getFoldCount (lastLine);
+				editingFinished = foldCount == 0;
+				line += 1;
+
+				// Test for negative (unfixable) grouping mismatch
+				if (foldCount < 0) {
+
+					// Clear buffer
+					accum.Clear ();
+
+					// Output error
+					ANSI.WriteLine ($"{Red}Mismatched bracket, brace, or parenthesis group!");
+					editingFinished = true;
+				} else {
+					
+					// Append line to buffer
+					accum.AppendLine (lastLine);
+				}
+
+				// Restore prompt
+				Prompt.Pop ();
+			}
+
+			// Return buffer
+			return accum.ToString ();
 		}
 
 		/// <summary>
@@ -131,22 +256,27 @@
 						var token_length = err.Token.Value.Length;
 
 						// Print user input for later highlighting
-						Console.Write (instance.BufferedInput);
+						var line = instance.BufferedInput.Split ('\n') [err.Location.Line].Trim ();
+						Console.Write (line);
 
 						// Highlight the error
 						Console.CursorLeft = err.Location.Column - token_length;
-						ANSI.WriteLine ($"{DarkRed.bg}{White}{instance.BufferedInput.Substring (err.Location.Column - token_length, token_length)}");
+						ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column - token_length, token_length)}");
+						ANSI.WriteLine ($"{White}{string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column)}");
+					} else {
 
-						// Print the error location and description
-						ANSI.WriteLine ($"{White}{string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column)} {Red}{err.Text}");
-						continue;
+						// Print user input for later highlighting
+						var line = instance.BufferedInput.Split ('\n') [err.Location.Line].Trim ();
+						Console.Write (line);
+
+						// Highlight the error
+						Console.CursorLeft = err.Location.Column;
+						ANSI.WriteLine ($"{DarkRed.bg}{White}{line [err.Location.Column - 1]}");
+						ANSI.WriteLine ($"{White}{"^".PadLeft (err.Location.Column, ' ')}");
 					}
 
-					// Print user input for later highlighting
-					Console.WriteLine (instance.BufferedInput);
-
 					// Print the error location and description
-					ANSI.WriteLine ($"{White}{"^".PadLeft (err.Location.Column, ' ')} {Red}{err.Text}");
+					ANSI.WriteLine ($"\n{White}SyntaxError{(err.Location.Line != 0 ? $" at line {err.Location.Line + 1}" : string.Empty)}: {Red}{err.Text}");
 				}
 			} catch (UnhandledIodineExceptionException e) {
 
