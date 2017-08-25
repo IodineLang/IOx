@@ -264,7 +264,7 @@
 			}
 
 			// Rewrite indent if fold count is 0
-			if (foldCount == 0) rewriteIndent ();
+			if (correctIndent) rewriteIndent ();
 
 			// Return buffer
 			return accum.ToString ();
@@ -319,7 +319,7 @@
 						Console.Write (line);
 
 						// Highlight the error
-						Console.CursorLeft = err.Location.Column;
+						Console.CursorLeft = err.Location.Column - 1;
 						ANSI.WriteLine ($"{DarkRed.bg}{White}{line [err.Location.Column - 1]}");
 						ANSI.WriteLine ($"{White}{"^".PadLeft (err.Location.Column, ' ')}");
 					}
