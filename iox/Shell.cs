@@ -109,8 +109,10 @@
 			var accum = new StringBuilder ();
 			string lastLine = string.Empty;
 			bool editingFinished = false;
+			bool correctIndent = false;
 			int foldCount = 0;
 			int line = 1;
+			int indent = 0;
 
 			// Define getFoldCount function
 			var getFoldCount = new Func<string, int> (str => {
@@ -150,6 +152,30 @@
 				return $"{lineNum} λ";
 			});
 
+			// Define rewriteIndent function
+			var rewriteIndent = new Action (() => {
+				
+				// Save cursor state
+				var currentCursorTop = Console.CursorTop;
+				var targetCursorTop = Math.Max (0, Console.CursorTop - 1);
+
+				// Rewrite last line
+				Console.CursorTop = targetCursorTop;
+				Console.CursorLeft = 0;
+				Console.Write ("".PadRight (Console.WindowWidth));
+				Console.CursorTop = targetCursorTop;
+				Console.CursorLeft = 0;
+				Prompt.Push (getPrompt (Math.Max (0, line - 1)));
+				ANSI.Write (Prompt.ToString ());
+				Prompt.Pop ();
+				Console.Write (string.Empty.PadLeft (indent * 2));
+				Console.Write (lastLine);
+
+				// Restore cursor state
+				Console.CursorTop = currentCursorTop;
+				Console.CursorLeft = 0;
+			});
+
 			// Read more lines
 			while (!editingFinished) {
 				
@@ -164,7 +190,17 @@
 					Prompt.Push (getPrompt (line));
 				}
 
-				// Test if this is the second line
+				// Test if the indentation of the previous line should be rewritten
+				if (correctIndent) {
+
+					// Rewrite line
+					rewriteIndent ();
+
+					// Do not correct the indentation again
+					correctIndent = false;
+				}
+
+				// Test if the prompt of the previous line should be rewritten
 				if (line == 2) {
 					
 					// Save cursor state
@@ -190,11 +226,21 @@
 				// Write prompt
 				ANSI.Write (Prompt.ToString ());
 
+				// Write indent
+				ANSI.Write (string.Empty.PadLeft (indent * 2));
+
 				// Read line
 				lastLine = Console.ReadLine ().Trim ();
 
 				// Update state
-				foldCount += getFoldCount (lastLine);
+				var localFoldCount = getFoldCount (lastLine);
+				foldCount += localFoldCount;
+				if (localFoldCount > 0) {
+					indent += 1;
+				} else if (localFoldCount < 0) {
+					correctIndent = true;
+					indent = Math.Max (0, indent - 1);
+				}
 				editingFinished = foldCount == 0;
 				line += 1;
 
@@ -216,6 +262,9 @@
 				// Restore prompt
 				Prompt.Pop ();
 			}
+
+			// Rewrite indent if fold count is 0
+			if (foldCount == 0) rewriteIndent ();
 
 			// Return buffer
 			return accum.ToString ();
