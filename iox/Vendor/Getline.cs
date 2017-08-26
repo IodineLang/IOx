@@ -66,6 +66,7 @@ using System.Text;
 using System.IO;
 using System.Threading;
 using System.Reflection;
+using iox;
 
 namespace Mono.Terminal {
 
@@ -463,8 +464,8 @@ namespace Mono.Terminal {
 					int item_idx = top_item + r;
 					bool selected = (item_idx == selected_item);
 
-					Console.ForegroundColor = selected ? ConsoleColor.White : ConsoleColor.Black;
-					Console.BackgroundColor = selected ? ConsoleColor.DarkCyan : ConsoleColor.White;
+					var ansi_fg = selected ? ANSIColor.White.fg : ANSIColor.Black.fg;
+					var ansi_bg = selected ? ANSIColor.DarkCyan.bg : ANSIColor.White.bg;
 
 					var item = Prefix + Completions [item_idx];
 					if (item.Length > Width)
@@ -472,9 +473,9 @@ namespace Mono.Terminal {
 
 					Console.CursorLeft = Col;
 					Console.CursorTop = Row + r;
-					Console.Write (item);
+					ANSI.Write ($"{ansi_fg}{ansi_bg}{item}");
 					for (int space = item.Length; space <= Width; space++)
-						Console.Write (" ");
+						ANSI.Write ($"{ansi_fg}{ansi_bg} ");
 				}
 			}
 
