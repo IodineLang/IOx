@@ -5,6 +5,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iox", "iox\iox.csproj", "{1
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libiox", "libiox\libiox.csproj", "{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iox.testsuite", "iox.testsuite\iox.testsuite.csproj", "{788431D1-95FB-4B01-9640-557F9CF89C21}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -19,5 +21,9 @@ Global
 		{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}.Debug|x86.Build.0 = Debug|Any CPU
 		{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}.Release|x86.ActiveCfg = Release|Any CPU
 		{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}.Release|x86.Build.0 = Release|Any CPU
+		{788431D1-95FB-4B01-9640-557F9CF89C21}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{788431D1-95FB-4B01-9640-557F9CF89C21}.Debug|x86.Build.0 = Debug|Any CPU
+		{788431D1-95FB-4B01-9640-557F9CF89C21}.Release|x86.ActiveCfg = Release|Any CPU
+		{788431D1-95FB-4B01-9640-557F9CF89C21}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

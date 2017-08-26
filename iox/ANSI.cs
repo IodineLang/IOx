@@ -37,6 +37,70 @@
 		}
 
 		/// <summary>
+		/// Test if a string contains one or more ANSI escape sequence.
+		/// </summary>
+		/// <returns><c>true</c>, if escapes was containsed, <c>false</c> otherwise.</returns>
+		/// <param name="str">String.</param>
+		public static bool ContainsEscapes (string str) => Purify (str) != str;
+
+		/// <summary>
+		/// Purify a string by removing all ANSI escapes.
+		/// </summary>
+		/// <returns>The purify.</returns>
+		/// <param name="str">String.</param>
+		public static string Purify (string str) {
+
+			// Initialize state
+			var receivedEscape = false;
+			var inEscapeSequence = false;
+			var escapeSequenceFinished = false;
+			var accum = new StringBuilder ();
+
+			// Iterate over all characters
+			foreach (var chr in str) {
+
+				// Test if an escape sequence is ready to be printed
+				if (escapeSequenceFinished) {
+					escapeSequenceFinished = false;
+				}
+
+				// Test if we're inside of an escape sequence
+				if (inEscapeSequence) {
+					
+					// Test if we're at the end of the sequence
+					if (chr != 'm') {
+						continue;
+					}
+
+					// Update state
+					escapeSequenceFinished = true;
+					inEscapeSequence = false;
+					continue;
+				}
+
+				// Test if we've received the escape character
+				if (receivedEscape) {
+					receivedEscape = false;
+					if (chr == '[') {
+						inEscapeSequence = true;
+						continue;
+					}
+				}
+
+				// Test for ANSI escape character
+				if (chr == ESC) {
+					receivedEscape = true;
+					continue;
+				}
+
+				// Nothing special, just print the char
+				accum.Append (chr);
+			}
+
+			return accum.ToString ();
+		}
+
+		/// <summary>
 		/// Print an ANSI-escaped string.
 		/// </summary>
 		/// <param name="str">String.</param>

@@ -288,14 +288,14 @@ namespace Mono.Terminal {
 		}
 
 		void Render () {
-			Console.Write (shown_prompt);
+			ANSI.Write (shown_prompt);
 			Console.Write (rendered_text);
+			
+			int max = Math.Max (rendered_text.Length + ANSI.Purify (shown_prompt).Length, max_rendered);
 
-			int max = Math.Max (rendered_text.Length + shown_prompt.Length, max_rendered);
-
-			for (int i = rendered_text.Length + shown_prompt.Length; i < max_rendered; i++)
+			for (int i = rendered_text.Length + ANSI.Purify (shown_prompt).Length; i < max_rendered; i++)
 				Console.Write (' ');
-			max_rendered = shown_prompt.Length + rendered_text.Length;
+			max_rendered = ANSI.Purify (shown_prompt).Length + rendered_text.Length;
 
 			// Write one more to ensure that we always wrap around properly if we are at the
 			// end of a line.
@@ -320,10 +320,10 @@ namespace Mono.Terminal {
 			for (i = rpos; i < rendered_text.Length; i++)
 				Console.Write (rendered_text [i]);
 
-			if ((shown_prompt.Length + rendered_text.Length) > max_rendered)
-				max_rendered = shown_prompt.Length + rendered_text.Length;
+			if ((ANSI.Purify (shown_prompt).Length + rendered_text.Length) > max_rendered)
+				max_rendered = ANSI.Purify (shown_prompt).Length + rendered_text.Length;
 			else {
-				int max_extra = max_rendered - shown_prompt.Length;
+				int max_extra = max_rendered - ANSI.Purify (shown_prompt).Length;
 				for (; i < max_extra; i++)
 					Console.Write (' ');
 			}
@@ -367,7 +367,7 @@ namespace Mono.Terminal {
 		}
 
 		int TextToScreenPos (int pos) {
-			return shown_prompt.Length + TextToRenderPos (pos);
+			return ANSI.Purify (shown_prompt).Length + TextToRenderPos (pos);
 		}
 
 		string Prompt {
@@ -377,14 +377,14 @@ namespace Mono.Terminal {
 
 		int LineCount {
 			get {
-				return (shown_prompt.Length + rendered_text.Length) / Console.WindowWidth;
+				return (ANSI.Purify (shown_prompt).Length + rendered_text.Length) / Console.WindowWidth;
 			}
 		}
 
 		void ForceCursor (int newpos) {
 			cursor = newpos;
 
-			int actual_pos = shown_prompt.Length + TextToRenderPos (cursor);
+			int actual_pos = ANSI.Purify (shown_prompt).Length + TextToRenderPos (cursor);
 			int row = home_row + (actual_pos / Console.WindowWidth);
 			int col = actual_pos % Console.WindowWidth;
 

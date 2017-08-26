@@ -312,8 +312,6 @@
 								.Where (attr => attr.Key.StartsWith (text, StringComparison.Ordinal))
 								.Select (attr => attr.Key)
 								.Where (attr => !attr.StartsWith ("__", StringComparison.Ordinal) && !attr.EndsWith ("__", StringComparison.Ordinal))
-								.Except (attrObj.TypeDef?.Attributes.Select (attr => attr.Key).ToArray () ?? new string[0])
-								.Except (attrObj.Base?.Attributes.Select (attr => attr.Key).ToArray () ?? new string [0])
 								.Select (attr => attr.Substring (pos))
 								.Reverse ()
 								.ToArray ()
