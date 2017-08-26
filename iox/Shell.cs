@@ -36,6 +36,11 @@
 		string BufferedInput;
 
 		/// <summary>
+		/// Whether the shell should exit.
+		/// </summary>
+		bool shouldExit;
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="T:iox.Shell"/> class.
 		/// </summary>
 		public Shell (Configuration conf) {
@@ -44,10 +49,47 @@
 			// Get assembly version
 			AssemblyVersion = ReflectionHelper.GetVersion ();
 
+			// Define builtin exit function
+			var iodineHookExit = new BuiltinMethodCallback ((vm, self, arguments) => {
+				shouldExit = true;
+				return IodineNull.Instance;
+			}, null);
+			iodineHookExit.SetAttribute ("__doc__", new IodineString ("Exits the iox REPL shell."));
+
+			// Define builtin help function
+			var iodineHookHelp = new BuiltinMethodCallback ((vm, self, arguments) => {
+				// Test argument count
+				if (arguments.Length == 0) {
+					ANSI.WriteLine ("Please pass an object to the help function!");
+					return IodineNull.Instance;
+				}
+
+				// Get the target object
+				var target = arguments [0];
+
+				// Test __doc__ attribute existence
+				if (!target.HasAttribute ("__doc__") || !(target.GetAttribute (vm, "__doc__") is IodineString)) {
+					ANSI.WriteLine ($"The specified {White}{target.TypeDef.Name}{Default} does not provide any documentation :(");
+					return IodineNull.Instance;
+				}
+
+				// Write documentation
+				ANSI.WriteLine (((IodineString) target.GetAttribute (vm, "__doc__")).Value);
+				return IodineNull.Instance;
+			}, null);
+			iodineHookHelp.SetAttribute ("__doc__", new IodineString ("Prints the documentation for the specified object."));
+
 			// Setup Iodine context
 			Iodine = new IodineContext ();
+			Iodine.ExposeGlobal ("exit", iodineHookExit);
+			Iodine.ExposeGlobal ("help", iodineHookHelp);
 			Iodine.AddSearchPaths ("./iodine/modules");
-			Iodine.RegisterExtension<IoxExtension> ("iox");
+			if (Environment.GetEnvironmentVariable ("IODINE_MODULES") != null) {
+				Iodine.AddSearchPaths (Environment.GetEnvironmentVariable ("IODINE_MODULES"));
+			}
+			if (Environment.GetEnvironmentVariable ("IODINE_HOME") != null) {
+				Iodine.AddSearchPaths (System.IO.Path.Combine (Environment.GetEnvironmentVariable ("IODINE_HOME"), "modules"));
+			}
 
 			// Set prompt
 			Prompt = new Prompt ("λ");
@@ -77,7 +119,7 @@
 				ANSI.WriteLine ($"IOx {ioxVersion} (Iodine {iodineVersion} {iodineBuildDate})\n");
 			}
 
-			while (true) {
+			while (!shouldExit) {
 				RunIteration ();
 			}
 		}
@@ -248,14 +290,63 @@
 					Console.CursorLeft = 0;
 				}
 
-				// Write prompt
-				ANSI.Write (Prompt.ToString ());
-
-				// Write indent
-				ANSI.Write (string.Empty.PadLeft (indent * 2));
+				// Modify prompt
+				Prompt.Push ($"{Prompt.ToString ().Trim ()}{string.Empty.PadLeft (indent * 2)}");
 
 				// Read line
-				lastLine = Console.ReadLine ().Trim ();
+				var lineEditor = new Mono.Terminal.LineEditor ("test") {
+					HeuristicsMode = "iodine",
+					TabAtStartCompletes = false,
+				};
+				lineEditor.AutoCompleteEvent += (string text, int pos) => {
+					var strippedText = text.Split (' ').Last ();
+					string [] completions = new string [0];
+					if (text.Contains ('.')) {
+						var attrName = text.Substring (0, text.LastIndexOf ('.'));
+						var attrObj = Iodine.CompileAndInvokeOrNull (attrName);
+						if (attrObj != null) {
+							text = text.Split (new [] { ' ', '.', '(', '[', '{', '}', ']', ')' }).Last ();
+							pos = text.Length;
+							completions = (
+								attrObj.Attributes
+								.Where (attr => attr.Key.StartsWith (text, StringComparison.Ordinal))
+								.Select (attr => attr.Key)
+								.Where (attr => !attr.StartsWith ("__", StringComparison.Ordinal) && !attr.EndsWith ("__", StringComparison.Ordinal))
+								.Except (attrObj.TypeDef?.Attributes.Select (attr => attr.Key).ToArray () ?? new string[0])
+								.Except (attrObj.Base?.Attributes.Select (attr => attr.Key).ToArray () ?? new string [0])
+								.Select (attr => attr.Substring (pos))
+								.Reverse ()
+								.ToArray ()
+							);
+						}
+					} else {
+						text = text.Split (new [] { ' ', '.', '(', '[', '{', '}', ']', ')' }).Last ();
+						pos = text.Length;
+						completions = (
+							Iodine.Engine.Context.Globals
+							.Concat (Iodine.Engine.Context.InteractiveLocals)
+							.Where (attr => attr.Key.StartsWith (text, StringComparison.Ordinal))
+							.Select (attr => attr.Key)
+							.Where (attr => !attr.StartsWith ("__", StringComparison.Ordinal) && !attr.EndsWith ("__", StringComparison.Ordinal))
+							.Select (attr => attr.Substring (pos))
+							.Reverse ()
+							.ToArray ()
+						);
+					}
+					return new Mono.Terminal.LineEditor.Completion (text.Split (' ').Last (), completions);
+				};
+				lastLine = lineEditor.Edit (Prompt.ToString (), string.Empty) ?? string.Empty;
+
+				// Restore prompt
+				Prompt.Pop ();
+
+				//lastLine = Hinter.ReadHintedLine (
+				//	hintSource: Iodine.Engine.Context.Globals.Concat (Iodine.Engine.Context.InteractiveLocals),
+				//	hintField: attr => attr.Key,
+				//	hintColor: Gray
+				//).Trim ();
+
+				// lastLine = Console.ReadLine ().Trim ();
 
 				// Update state
 				var localFoldCount = getFoldCount (lastLine);

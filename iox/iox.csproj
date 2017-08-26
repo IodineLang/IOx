@@ -48,8 +48,9 @@
     <Compile Include="PrettyPrint.cs" />
     <Compile Include="ANSIColor.cs" />
     <Compile Include="ReflectionHelper.cs" />
-    <Compile Include="IodineExtensions\IoxExtension.cs" />
     <Compile Include="Configuration.cs" />
+    <Compile Include="Vendor\Hinter.cs" />
+    <Compile Include="Vendor\Getline.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\libiox\libiox.csproj">
@@ -58,7 +59,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="IodineExtensions\" />
+    <Folder Include="Vendor\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -39,6 +39,16 @@
 		}
 
 		/// <summary>
+		/// Expose a global attribute.
+		/// </summary>
+		/// <param name="name">Name.</param>
+		/// <param name="attr">Attribute.</param>
+		/// <typeparam name="T">The 1st type parameter.</typeparam>
+		public void ExposeGlobal<T> (string name, T attr) where T: IodineObject {
+			Context.Globals.Add (name, attr);
+		}
+
+		/// <summary>
 		/// Add paths to the Iodine search path.
 		/// </summary>
 		/// <param name="paths">Paths.</param>
@@ -69,6 +79,21 @@
 
 			// Invoke the module
 			return Context.Invoke (module, new IodineObject [0]);
+		}
+
+		/// <summary>
+		/// Compile and invoke source code and return the resulting object or null.
+		/// </summary>
+		/// <returns>The and invoke or null.</returns>
+		/// <param name="source">Source.</param>
+		public IodineObject CompileAndInvokeOrNull (string source) {
+
+			// Try compiling and invoking some source
+			try {
+				return InvokeModule (CompileSource (source));
+			} catch {
+				return null;
+			}
 		}
 	}
 }
