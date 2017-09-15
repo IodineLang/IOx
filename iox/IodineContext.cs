@@ -1,4 +1,4 @@
-﻿namespace libiox {
+﻿namespace iox {
 	using Iodine.Interop;
 	using Iodine.Runtime;
 

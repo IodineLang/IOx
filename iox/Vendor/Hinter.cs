@@ -39,7 +39,7 @@ namespace iox {
 	/// <summary>
 	/// Hinter.
 	/// </summary>
-	public static class Hinter {
+	public static class __Hinter {
 		public static string ReadHintedLine<T, TResult> (IEnumerable<T> hintSource, Func<T, TResult> hintField, ANSIColor hintColor, string inputRegex = ".*") {
 
 			ConsoleKeyInfo input;

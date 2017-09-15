@@ -27,6 +27,7 @@
 			[typeof (IodineString)] = DarkGreen,
 			[typeof (IodineInteger)] = DarkYellow,
 			[typeof (IodineException)] = Red,
+			[typeof (RegexModule.IodineRegex)] = Gray,
 		};
 
 		/// <summary>
@@ -43,6 +44,7 @@
 			[typeof (IodineString)] = IodineStringFormatter,
 			[typeof (IodineException)] = IodineExceptionFormatter,
 			[typeof (IodineDictionary)] = IodineDictionaryFormatter,
+			[typeof (RegexModule.IodineRegex)] = IodineRegexFormatter,
 		};
 
 		/// <summary>
@@ -88,6 +90,7 @@
 			}
 
 			// Oops, there's no custom formatter for that object
+			Logger.Warn ($"No formatter for type '{type.Name}'");
 			return ANSI.Sanitize ($"{color ?? White}{obj}");
 		}
 
@@ -96,6 +99,9 @@
 
 		static string IodineStringFormatter (IodineObject target, string start, string stop)
 		=> $"{start}'{((IodineString) target).Value}'{stop}";
+
+		static string IodineRegexFormatter (IodineObject target, string start, string stop)
+		=> $"{start}/{White}{((RegexModule.IodineRegex) target).Value}{start}/{stop}";
 
 		static string IodineBoolFormatter (IodineObject target, string start, string stop)
 		=> $"{start}{((IodineBool) target).Value.ToString ().ToLowerInvariant ()}{stop}";

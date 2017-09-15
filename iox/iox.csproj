@@ -33,8 +33,11 @@
     <Reference Include="LibIodine">
       <HintPath>..\iodine\bin\LibIodine.dll</HintPath>
     </Reference>
-    <Reference Include="codeaddicts.libArgument">
-      <HintPath>..\packages\Codeaddicts.libArgument.1.0.6001.31903\lib\codeaddicts.libArgument.dll</HintPath>
+    <Reference Include="Kaliko.Logger">
+      <HintPath>..\packages\Kaliko.Logger.1.1.1\lib\Kaliko.Logger.dll</HintPath>
+    </Reference>
+    <Reference Include="DocoptNet">
+      <HintPath>..\packages\docopt.net.0.6.1.9\lib\net40\DocoptNet.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -51,18 +54,17 @@
     <Compile Include="Configuration.cs" />
     <Compile Include="Vendor\Hinter.cs" />
     <Compile Include="Vendor\Getline.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\libiox\libiox.csproj">
-      <Project>{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}</Project>
-      <Name>libiox</Name>
-    </ProjectReference>
+    <Compile Include="Logger.cs" />
+    <Compile Include="IodineContext.cs" />
+    <Compile Include="Versions.cs" />
+    <Compile Include="HinterWrapper.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Vendor\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="app.config" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

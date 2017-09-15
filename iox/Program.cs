@@ -1,7 +1,6 @@
 ﻿namespace iox {
 	using System.Globalization;
 	using System.Threading;
-	using Codeaddicts.libArgument;
 
 	/// <summary>
 	/// Main class.
@@ -22,7 +21,7 @@
 			ConsoleHelper.EnableUTF8 ();
 
 			// Read configuration
-			var conf = ArgumentParser<Configuration>.Parse (args);
+			var conf = Configuration.Parse (args);
 
 			// Create shell instance
 			var shell = new Shell (conf);

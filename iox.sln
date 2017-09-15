@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iox", "iox\iox.csproj", "{10F12D2B-95EB-4A81-9973-084853C1BA46}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libiox", "libiox\libiox.csproj", "{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iox.testsuite", "iox.testsuite\iox.testsuite.csproj", "{788431D1-95FB-4B01-9640-557F9CF89C21}"
 EndProject
 Global
@@ -17,10 +15,6 @@ Global
 		{10F12D2B-95EB-4A81-9973-084853C1BA46}.Debug|x86.Build.0 = Debug|x86
 		{10F12D2B-95EB-4A81-9973-084853C1BA46}.Release|x86.ActiveCfg = Release|x86
 		{10F12D2B-95EB-4A81-9973-084853C1BA46}.Release|x86.Build.0 = Release|x86
-		{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}.Debug|x86.Build.0 = Debug|Any CPU
-		{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}.Release|x86.ActiveCfg = Release|Any CPU
-		{352DE1A2-EAAA-41EF-81FC-48CCC9FC60A2}.Release|x86.Build.0 = Release|Any CPU
 		{788431D1-95FB-4B01-9640-557F9CF89C21}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{788431D1-95FB-4B01-9640-557F9CF89C21}.Debug|x86.Build.0 = Debug|Any CPU
 		{788431D1-95FB-4B01-9640-557F9CF89C21}.Release|x86.ActiveCfg = Release|Any CPU

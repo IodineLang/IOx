@@ -1,10 +1,10 @@
 ﻿namespace iox {
 	using System;
 	using System.Collections.Generic;
+	using System.IO;
 	using System.Linq;
 	using System.Text;
 	using Iodine.Runtime;
-	using libiox;
 	using static ANSIColor;
 	using static PowerlineBuilder;
 
@@ -13,12 +13,17 @@
 		/// <summary>
 		/// The iodine context.
 		/// </summary>
-		readonly IodineContext Iodine;
+		internal readonly IodineContext Iodine;
 
 		/// <summary>
 		/// The prompt.
 		/// </summary>
 		readonly Prompt Prompt;
+
+		/// <summary>
+		/// The hinter.
+		/// </summary>
+		readonly HinterWrapper Hinter;
 
 		/// <summary>
 		/// The configuration.
@@ -88,7 +93,7 @@
 				Iodine.AddSearchPaths (Environment.GetEnvironmentVariable ("IODINE_MODULES"));
 			}
 			if (Environment.GetEnvironmentVariable ("IODINE_HOME") != null) {
-				Iodine.AddSearchPaths (System.IO.Path.Combine (Environment.GetEnvironmentVariable ("IODINE_HOME"), "modules"));
+				Iodine.AddSearchPaths (Path.Combine (Environment.GetEnvironmentVariable ("IODINE_HOME"), "modules"));
 			}
 
 			// Set prompt
@@ -96,30 +101,178 @@
 			if (Conf.UsePowerlines) {
 				Prompt = new Prompt (Powerline ().Segment ($"IoX {AssemblyVersion.ToString (2)} ", fg: DarkCyan, bg: White).ToAnsiString ());
 			}
+
+			// Set hinter
+			Hinter = new HinterWrapper (this);
 		}
 
 		/// <summary>
 		/// Enter the REPL.
 		/// </summary>
 		public void Run () {
-			
-			// Collect version information
-			var ioxVersion = AssemblyVersion.ToString (2);
-			var iodineVersion = ReflectionHelper.GetIodineVersion ().ToString (3);
-			var iodineBuildDate = ReflectionHelper.GetIodineBuildDate ()?.ToString ("MMM dd yyyy") ?? string.Empty;
 
+			// Apply Iodine context options
+			Iodine.Engine.Context.ShouldCache = !Conf.SuppressCache;
+			Iodine.Engine.Context.ShouldOptimize = !Conf.SuppressOptimizer;
+
+			// Check 'help'
+			if (Conf.Help) {
+				Configuration.PrintHelp (exit: true, error: false);
+			}
+
+			// Check 'version'
+			else if (Conf.Version) {
+				ANSI.WriteLine ($"IOx {Versions.IoxFullVersion} (Iodine {Versions.IodineFullVersion} {Versions.IodineBuildDate})");
+				Environment.Exit (0);
+			}
+
+			// Check 'check'
+			else if (Conf.Check) {
+				RunCheck ();
+				Environment.Exit (0);
+			}
+
+			// Check 'repl'
+			else if (Conf.Repl) {
+				RunFile (repl: true);
+				Environment.Exit (0);
+			}
+
+			// Check file
+			else if (!string.IsNullOrEmpty (Conf.File)) {
+				RunFile (repl: false);
+				Environment.Exit (0);
+			}
+
+			// No subcommands or files were specified
+			else {
+				
+				// Enter the REPL shell
+				RunRepl ();
+			}
+		}
+
+		/// <summary>
+		/// Run a syntax check only.
+		/// </summary>
+		void RunCheck () {
+
+			// Get the file
+			var content = string.Empty;
+			try {
+				content = File.ReadAllText (Conf.File);
+			} catch (FileNotFoundException ex) {
+				ANSI.WriteLine (ex.Message);
+				Environment.Exit (1);
+			}
+
+			// Compile the module
+			Iodine.Engine.Context.ShouldCache = false;
+			try {
+				Iodine.CompileSource (content);
+				ANSI.WriteLine ("OK - No syntax errors.");
+			} catch (Iodine.Compiler.SyntaxException e) {
+				ANSI.WriteLine ($"ERR - Syntax errors occurred.\n");
+
+				// Iterate over syntax errors
+				foreach (var err in e.ErrorLog.Errors) {
+
+					// Test if the error came from somewhere else
+					if (!string.IsNullOrEmpty (err.Location.File)) {
+
+						// Get the name of the file that caused the error
+						var path = System.IO.Path.GetFileNameWithoutExtension (err.Location.File);
+
+						// Print the error location and description
+						ANSI.WriteLine ($"Error at {White}{path}{Default} ({err.Location.Line + 1}:{err.Location.Column}): {err.Text}");
+						continue;
+					}
+
+					// Test if the error has an associated token
+					if (err.HasToken) {
+
+						// Get the length of the associated token
+						var token_length = err.Token.Value.Length;
+
+						// Print user input for later highlighting
+						var line = content.Split ('\n') [err.Location.Line].Trim ();
+						Console.Write (line);
+
+						// Highlight the error
+						Console.CursorLeft = err.Location.Column;
+						ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column, line [err.Location.Column] == '"' ? token_length + 2 : token_length)}");
+						ANSI.WriteLine ($"{White}{string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column)}");
+					} else {
+
+						// Print user input for later highlighting
+						var line = content.Split ('\n') [err.Location.Line].Trim ();
+						Console.Write (line);
+
+						// Highlight the error
+						Console.CursorLeft = err.Location.Column - 1;
+						ANSI.WriteLine ($"{DarkRed.bg}{White}{line [err.Location.Column - 1]}");
+						ANSI.WriteLine ($"{White}{"^".PadLeft (err.Location.Column, ' ')}");
+					}
+
+					// Print the error location and description
+					ANSI.WriteLine ($"\n{White}SyntaxError{(err.Location.Line != 0 ? $" at line {err.Location.Line + 1}" : string.Empty)}: {Red}{err.Text}");
+				}
+			} catch (Exception e) {
+				ANSI.WriteLine ($"ERR - {e.Message}");
+			}
+		}
+
+		/// <summary>
+		/// Run a file, and optionally a REPL shell afterwards.
+		/// </summary>
+		/// <param name="repl">If set to <c>true</c> repl.</param>
+		void RunFile (bool repl) {
+			
+			// Get the file
+			var content = string.Empty;
+			try {
+				content = File.ReadAllText (Conf.File);
+			} catch (FileNotFoundException ex) {
+				ANSI.WriteLine (ex.Message);
+				Environment.Exit (1);
+			}
+
+			// Compile the module
+			Iodine.Engine.Context.ShouldCache = false;
+			var module = WrapIodineOperation (this, () => Iodine.CompileSource (content));
+			if (module == null) return;
+
+			// Invoke the module
+			var result = WrapIodineOperation (this, () => Iodine.InvokeModule (module));
+			if (result == null) return;
+
+			// Test if the REPL shell should be entered
+			if (repl) {
+				
+				// Enter REPL shell
+				RunRepl ();
+			}
+		}
+
+		/// <summary>
+		/// Run a REPL shell only.
+		/// </summary>
+		void RunRepl () {
+			
 			// Print version information
 			if (Conf.UsePowerlines) {
 				ANSI.WriteLine (
 					Powerline ()
-					.Segment ($"IoX {ioxVersion} ", fg: DarkCyan, bg: White)
-					.Segment ($" Iodine {iodineVersion} {iodineBuildDate}", fg: White, bg: DarkCyan)
+					.Segment ($"IoX {Versions.IoxVersion} ", fg: DarkCyan, bg: White)
+					.Segment ($" Iodine {Versions.IodineVersion} {Versions.IodineBuildDate}", fg: White, bg: DarkCyan)
 					.ToAnsiString ());
 			} else {
-				ANSI.WriteLine ($"IOx {ioxVersion} (Iodine {iodineVersion} {iodineBuildDate})\n");
+				ANSI.WriteLine ($"IOx {Versions.IoxVersion} (Iodine {Versions.IodineVersion} {Versions.IodineBuildDate})\n");
 			}
 
 			while (!shouldExit) {
+
+				// Run a single REP iteration
 				RunIteration ();
 			}
 		}
@@ -146,8 +299,6 @@
 		}
 
 		string ReadUserInput () {
-
-			// TODO: Track grouping operators separately
 
 			// Declare variables
 			var accum = new StringBuilder ();
@@ -190,20 +341,6 @@
 					tokens.Count (t => t.Class == global::Iodine.Compiler.TokenClass.CloseParan)
 				);
 				return foldBracketDiff + foldBraceDiff + foldParenDiff;
-				/*
-				return (
-					tokens.Count (t => new [] {
-						global::Iodine.Compiler.TokenClass.OpenBrace,
-						global::Iodine.Compiler.TokenClass.OpenBracket,
-						global::Iodine.Compiler.TokenClass.OpenParan,
-					}.Contains (t.Class)) -
-					tokens.Count (t => new [] {
-						global::Iodine.Compiler.TokenClass.CloseBrace,
-						global::Iodine.Compiler.TokenClass.CloseBracket,
-						global::Iodine.Compiler.TokenClass.CloseParan,
-					}.Contains (t.Class))
-				);
-				*/
 			});
 
 			// Define getPrompt function
@@ -294,46 +431,7 @@
 				Prompt.Push ($"{Prompt.ToString ().Trim ()}{string.Empty.PadLeft (indent * 2)}");
 
 				// Read line
-				var lineEditor = new Mono.Terminal.LineEditor ("test") {
-					HeuristicsMode = "iodine",
-					TabAtStartCompletes = false,
-				};
-				lineEditor.AutoCompleteEvent += (string text, int pos) => {
-					var strippedText = text.Split (' ').Last ();
-					string [] completions = new string [0];
-					if (text.Contains ('.')) {
-						var attrName = text.Substring (0, text.LastIndexOf ('.'));
-						var attrObj = Iodine.CompileAndInvokeOrNull (attrName);
-						if (attrObj != null) {
-							text = text.Split (new [] { ' ', '.', '(', '[', '{', '}', ']', ')' }).Last ();
-							pos = text.Length;
-							completions = (
-								attrObj.Attributes
-								.Where (attr => attr.Key.StartsWith (text, StringComparison.Ordinal))
-								.Select (attr => attr.Key)
-								.Where (attr => !attr.StartsWith ("__", StringComparison.Ordinal) && !attr.EndsWith ("__", StringComparison.Ordinal))
-								.Select (attr => attr.Substring (pos))
-								.Reverse ()
-								.ToArray ()
-							);
-						}
-					} else {
-						text = text.Split (new [] { ' ', '.', '(', '[', '{', '}', ']', ')' }).Last ();
-						pos = text.Length;
-						completions = (
-							Iodine.Engine.Context.Globals
-							.Concat (Iodine.Engine.Context.InteractiveLocals)
-							.Where (attr => attr.Key.StartsWith (text, StringComparison.Ordinal))
-							.Select (attr => attr.Key)
-							.Where (attr => !attr.StartsWith ("__", StringComparison.Ordinal) && !attr.EndsWith ("__", StringComparison.Ordinal))
-							.Select (attr => attr.Substring (pos))
-							.Reverse ()
-							.ToArray ()
-						);
-					}
-					return new Mono.Terminal.LineEditor.Completion (text.Split (' ').Last (), completions);
-				};
-				lastLine = lineEditor.Edit (Prompt.ToString (), string.Empty) ?? string.Empty;
+				lastLine = Hinter.Edit (Prompt.ToString ()) ?? string.Empty;
 
 				// Restore prompt
 				Prompt.Pop ();
@@ -438,8 +536,10 @@
 						Console.Write (line);
 
 						// Highlight the error
-						Console.CursorLeft = err.Location.Column - token_length;
-						ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column - token_length, token_length)}");
+						//Console.CursorLeft = err.Location.Column - token_length;
+						Console.CursorLeft = err.Location.Column;
+						//ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column - token_length, token_length)}");
+						ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column, line [err.Location.Column] == '"' ? token_length + 2 : token_length)}");
 						ANSI.WriteLine ($"{White}{string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column)}");
 					} else {
 
