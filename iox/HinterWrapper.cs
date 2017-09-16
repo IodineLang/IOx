@@ -54,5 +54,9 @@
 		public string Edit (string prompt, string initial = null) {
 			return LineEditor.Edit (prompt, initial ?? string.Empty);
 		}
+
+		public void SaveHistory () {
+			LineEditor.SaveHistory ();
+		}
 	}
 }

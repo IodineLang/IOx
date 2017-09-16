@@ -73,13 +73,26 @@
 				var target = arguments [0];
 
 				// Test __doc__ attribute existence
-				if (!target.HasAttribute ("__doc__") || !(target.GetAttribute (vm, "__doc__") is IodineString)) {
+				if (!target.HasAttribute ("__doc__")) {
 					ANSI.WriteLine ($"The specified {White}{target.TypeDef.Name}{Default} does not provide any documentation :(");
 					return IodineNull.Instance;
 				}
 
+				// Get attribute
+				var attr = target.GetAttribute (vm, "__doc__");
+
+				// Get documentation
+				var doc = (
+					attr as IodineString ??
+					(attr as IodineProperty)?.Get (vm) as IodineString ??
+					(attr as InternalIodineProperty)?.Get (vm) as IodineString
+				);
+
 				// Write documentation
-				ANSI.WriteLine (((IodineString) target.GetAttribute (vm, "__doc__")).Value);
+				if (doc != null) {
+					PrettyPrint.WriteLine (doc);
+				}
+
 				return IodineNull.Instance;
 			}, null);
 			iodineHookHelp.SetAttribute ("__doc__", new IodineString ("Prints the documentation for the specified object."));
@@ -274,6 +287,9 @@
 
 				// Run a single REP iteration
 				RunIteration ();
+
+				// Save history
+				Hinter.SaveHistory ();
 			}
 		}
 
