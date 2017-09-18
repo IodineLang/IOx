@@ -38,7 +38,7 @@
 		/// <summary>
 		/// The last buffered user input.
 		/// </summary>
-		string BufferedInput;
+		internal string BufferedInput;
 
 		/// <summary>
 		/// Whether the shell should exit.
@@ -186,50 +186,7 @@
 				ANSI.WriteLine ("OK - No syntax errors.");
 			} catch (Iodine.Compiler.SyntaxException e) {
 				ANSI.WriteLine ($"ERR - Syntax errors occurred.\n");
-
-				// Iterate over syntax errors
-				foreach (var err in e.ErrorLog.Errors) {
-
-					// Test if the error came from somewhere else
-					if (!string.IsNullOrEmpty (err.Location.File)) {
-
-						// Get the name of the file that caused the error
-						var path = System.IO.Path.GetFileNameWithoutExtension (err.Location.File);
-
-						// Print the error location and description
-						ANSI.WriteLine ($"Error at {White}{path}{Default} ({err.Location.Line + 1}:{err.Location.Column}): {err.Text}");
-						continue;
-					}
-
-					// Test if the error has an associated token
-					if (err.HasToken) {
-
-						// Get the length of the associated token
-						var token_length = err.Token.Value.Length;
-
-						// Print user input for later highlighting
-						var line = content.Split ('\n') [err.Location.Line].Trim ();
-						Console.Write (line);
-
-						// Highlight the error
-						Console.CursorLeft = err.Location.Column;
-						ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column, line [err.Location.Column] == '"' ? token_length + 2 : token_length)}");
-						ANSI.WriteLine ($"{White}{string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column)}");
-					} else {
-
-						// Print user input for later highlighting
-						var line = content.Split ('\n') [err.Location.Line].Trim ();
-						Console.Write (line);
-
-						// Highlight the error
-						Console.CursorLeft = err.Location.Column - 1;
-						ANSI.WriteLine ($"{DarkRed.bg}{White}{line [err.Location.Column - 1]}");
-						ANSI.WriteLine ($"{White}{"^".PadLeft (err.Location.Column, ' ')}");
-					}
-
-					// Print the error location and description
-					ANSI.WriteLine ($"\n{White}SyntaxError{(err.Location.Line != 0 ? $" at line {err.Location.Line + 1}" : string.Empty)}: {Red}{err.Text}");
-				}
+				IodineExceptionHandler.HandleSyntaxException (this, e);
 			} catch (Exception e) {
 				ANSI.WriteLine ($"ERR - {e.Message}");
 			}
@@ -527,78 +484,16 @@
 				return action ();
 			} catch (Iodine.Compiler.SyntaxException e) {
 
-				// Iterate over syntax errors
-				foreach (var err in e.ErrorLog.Errors) {
-
-					// Test if the error came from somewhere else
-					if (!string.IsNullOrEmpty (err.Location.File)) {
-
-						// Get the name of the file that caused the error
-						var path = System.IO.Path.GetFileNameWithoutExtension (err.Location.File);
-
-						// Print the error location and description
-						ANSI.WriteLine ($"Error at {White}{path}{Default} ({err.Location.Line + 1}:{err.Location.Column}): {err.Text}");
-						continue;
-					}
-
-					// Test if the error has an associated token
-					if (err.HasToken) {
-
-						// Get the length of the associated token
-						var token_length = err.Token.Value.Length;
-
-						// Print user input for later highlighting
-						var line = instance.BufferedInput.Split ('\n') [err.Location.Line].Trim ();
-						Console.Write (line);
-
-						// Highlight the error
-						//Console.CursorLeft = err.Location.Column - token_length;
-						Console.CursorLeft = err.Location.Column;
-						//ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column - token_length, token_length)}");
-						ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column, line [err.Location.Column] == '"' ? token_length + 2 : token_length)}");
-						ANSI.WriteLine ($"{White}{string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column)}");
-					} else {
-
-						// Print user input for later highlighting
-						var line = instance.BufferedInput.Split ('\n') [err.Location.Line].Trim ();
-						Console.Write (line);
-
-						// Highlight the error
-						Console.CursorLeft = err.Location.Column - 1;
-						ANSI.WriteLine ($"{DarkRed.bg}{White}{line [err.Location.Column - 1]}");
-						ANSI.WriteLine ($"{White}{"^".PadLeft (err.Location.Column, ' ')}");
-					}
-
-					// Print the error location and description
-					ANSI.WriteLine ($"\n{White}SyntaxError{(err.Location.Line != 0 ? $" at line {err.Location.Line + 1}" : string.Empty)}: {Red}{err.Text}");
-				}
+				// Handle exception
+				IodineExceptionHandler.HandleSyntaxException (instance, e);
 			} catch (UnhandledIodineExceptionException e) {
 
-				// Pretty print the underlying Iodine exception
-				PrettyPrint.WriteLine (e.OriginalException);
-
-				// Test if the error occurred in an actual module
-				if (e.Frame.Module.Name != "__anonymous__") {
-
-					// Print the stack trace
-					e.PrintStack ();
-				}
+				// Handle exception
+				IodineExceptionHandler.HandleUnhandledIodineException (instance, e);
 			} catch (ModuleNotFoundException e) {
 
-				// Print the name of the missing module
-				ANSI.WriteLine ($"Unable to find module '{White}{e.Name}{ANSI.ESC}[0m'");
-
-				// Iterate over the search paths
-				foreach (var searchPath in e.SearchPath) {
-
-					// Create a relative URI of the search path
-					var workingPathUri = new Uri (Environment.CurrentDirectory);
-					var searchPathUri = new Uri (System.IO.Path.GetFullPath (searchPath), UriKind.RelativeOrAbsolute);
-					var relativePathUri = workingPathUri.MakeRelativeUri (searchPathUri);
-
-					// Print the relative search path
-					ANSI.WriteLine ($"- ./{relativePathUri}");
-				}
+				// Handle exception
+				IodineExceptionHandler.HandleModuleNotFoundException (instance, e);
 			} catch (Exception e) {
 
 				// The Iodine engine exploded and we have no idea why.

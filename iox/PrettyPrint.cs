@@ -21,13 +21,19 @@
 		= new Dictionary<Type, ANSIColor> {
 			[typeof (IodineNull)] = DarkGray,
 			[typeof (IodineBool)] = DarkYellow,
+			[typeof (IodineInteger)] = DarkYellow,
 			[typeof (IodineFloat)] = DarkYellow,
 			[typeof (IodineBytes)] = Cyan,
 			[typeof (IodineBigInt)] = DarkYellow,
 			[typeof (IodineString)] = DarkGreen,
-			[typeof (IodineInteger)] = DarkYellow,
 			[typeof (IodineException)] = Red,
 			[typeof (RegexModule.IodineRegex)] = Gray,
+			[typeof (BuiltinMethodCallback)] = Cyan,
+			[typeof (IodineMethod)] = Cyan,
+			[typeof (IodineBoundMethod)] = Cyan,
+			[typeof (IodineModule)] = Cyan,
+			[typeof (Iodine.Compiler.ModuleBuilder)] = Cyan,
+			[typeof (IodineEnum)] = DarkYellow,
 		};
 
 		/// <summary>
@@ -37,6 +43,7 @@
 		= new Dictionary<Type, Func<IodineObject, string, string, string>> {
 			[typeof (IodineNull)] = IodineNullFormatter,
 			[typeof (IodineBool)] = IodineBoolFormatter,
+			[typeof (IodineInteger)] = IodineIntegerFormatter,
 			[typeof (IodineList)] = IodineListFormatter,
 			[typeof (IodineTuple)] = IodineTupleFormatter,
 			[typeof (IodineRange)] = IodineRangeFormatter,
@@ -45,7 +52,13 @@
 			[typeof (IodineException)] = IodineExceptionFormatter,
 			[typeof (IodineDictionary)] = IodineDictionaryFormatter,
 			[typeof (RegexModule.IodineRegex)] = IodineRegexFormatter,
+			[typeof (BuiltinMethodCallback)] = IodineBuiltinMethodCallbackFormatter,
+			[typeof (IodineMethod)] = IodineMethodFormatter,
+			[typeof (IodineBoundMethod)] = IodineBoundMethodFormatter,
+			[typeof (IodineModule)] = IodineModuleFormatter,
+			[typeof (Iodine.Compiler.ModuleBuilder)] = IodineModuleBuilderFormatter,
 		};
+
 
 		/// <summary>
 		/// Pretty print the specified object.
@@ -106,13 +119,14 @@
 		static string IodineBoolFormatter (IodineObject target, string start, string stop)
 		=> $"{start}{((IodineBool) target).Value.ToString ().ToLowerInvariant ()}{stop}";
 
+		static string IodineIntegerFormatter (IodineObject target, string start, string stop)
+		=> $"{start}{((IodineInteger) target).Value}{stop}";
+
 		static string IodineListFormatter (IodineObject target, string start, string stop)
 		=> $"[ {string.Join ($", ", ((IodineList) target).Objects.Select (obj => Format (obj)))} ]";
 
-		static string IodineTupleFormatter (IodineObject target, string start, string stop) {
-			var tuple = (IodineTuple) target;
-			return $"( {string.Join ($", ", tuple.Objects.Select (obj => Format (obj)))} )";
-		}
+		static string IodineTupleFormatter (IodineObject target, string start, string stop)
+		=> $"( {string.Join ($", ", ((IodineTuple) target).Objects.Select (obj => Format (obj)))} )";
 
 		static string IodineBytesFormatter (IodineObject target, string start, string stop) {
 			var bytes = (IodineBytes) target;
@@ -139,5 +153,20 @@
 			var rangeStep = new IodineInteger ((long) rangeFields.First (field => field.Name == "step").GetValue (range));
 			return $"Range (start: {Format (rangeStart)} stop: {Format (rangeStop)} step: {Format (rangeStep)})";
 		}
+
+		static string IodineBuiltinMethodCallbackFormatter (IodineObject target, string start, string stop)
+		=> $"{start}[BuiltinFunction]{stop}";
+
+		static string IodineMethodFormatter (IodineObject target, string start, string stop)
+		=> $"{start}[Function: {((IodineMethod) target).Name}]{stop}";
+
+		static string IodineBoundMethodFormatter (IodineObject target, string start, string stop)
+		=> $"{start}[BoundFunction: {((IodineBoundMethod) target).Method.Name}]{stop}";
+
+		static string IodineModuleFormatter (IodineObject target, string start, string stop)
+		=> $"{start}[Module: {((IodineModule) target).Name}]{stop}";
+
+		static string IodineModuleBuilderFormatter (IodineObject target, string start, string stop)
+		=> $"{start}[Module: {((Iodine.Compiler.ModuleBuilder) target).Name}]{stop}";
 	}
 }

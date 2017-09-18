@@ -58,6 +58,7 @@
     <Compile Include="IodineContext.cs" />
     <Compile Include="Versions.cs" />
     <Compile Include="HinterWrapper.cs" />
+    <Compile Include="IodineExceptionHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Vendor\" />
