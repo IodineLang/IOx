@@ -36,6 +36,7 @@
 		/// <typeparam name="T">The 1st type parameter.</typeparam>
 		public void RegisterExtension<T> (string name) where T: IodineModule, new() {
 			Context.ExposeModule (name, new T ());
+			Logger.Info ($"[Iodine] Exposed module: {name} (T:{typeof (T).Name})");
 		}
 
 		/// <summary>
@@ -46,6 +47,7 @@
 		/// <typeparam name="T">The 1st type parameter.</typeparam>
 		public void ExposeGlobal<T> (string name, T attr) where T: IodineObject {
 			Context.Globals.Add (name, attr);
+			Logger.Info ($"[Iodine] Exposed global: {name} (T:{typeof (T).Name})");
 		}
 
 		/// <summary>

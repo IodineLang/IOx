@@ -213,8 +213,10 @@
 
 						// Highlight the error
 						Console.CursorLeft = err.Location.Column;
-						ANSI.WriteLine ($"{DarkRed.bg}{White}{line.Substring (err.Location.Column, line [err.Location.Column] == '"' ? token_length + 2 : token_length)}");
-						ANSI.WriteLine ($"{White}{string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column)}");
+						var err_region = line.Substring (err.Location.Column, line [err.Location.Column] == '"' ? token_length + 2 : token_length);
+						ANSI.WriteLine ($"{DarkRed.bg}{White}{err_region}");
+						var err_underline = string.Empty.PadLeft (token_length, '^').PadLeft (err.Location.Column);
+						ANSI.WriteLine ($"{White}{err_underline}");
 					} else {
 
 						// Print user input for later highlighting
